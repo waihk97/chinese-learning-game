@@ -96,30 +96,27 @@ export class GameScene extends Phaser.Scene {
       const x = this.scale.width * 0.5 + (index % 2 === 0 ? -190 : 190);
       const y = baseY + Math.floor(index / 2) * 90;
 
-      const buttonPanel = this.add.rectangle(x, y, 260, 60, 0x2563eb);
+      const buttonPanel = this.add.rectangle(0, 0, 260, 60, 0x2563eb);
       buttonPanel.setStrokeStyle(4, 0xe0f2fe);
       buttonPanel.setInteractive({ useHandCursor: true });
 
-      const label = this.add.text(x, y, option, {
+      const label = this.add.text(0, 0, option, {
         fontFamily: 'Verdana',
         fontSize: '24px',
         color: '#f8fafc',
       });
       label.setOrigin(0.5);
 
-      const container = this.add.container(0, 0, [buttonPanel, label]);
-      container.setPosition(x, y);
+      const container = this.add.container(x, y, [buttonPanel, label]);
       container.setDepth(2);
-      container.setSize(260, 60);
-
-      container.on('pointerdown', () => {
-        this.handleAnswer(option, round.answer, word);
-      });
 
       buttonPanel.on('pointerdown', () => {
         this.handleAnswer(option, round.answer, word);
       });
       label.on('pointerdown', () => {
+        this.handleAnswer(option, round.answer, word);
+      });
+      container.on('pointerdown', () => {
         this.handleAnswer(option, round.answer, word);
       });
 
