@@ -5,16 +5,20 @@ import { buildRound, gameSave } from '../game/GameState';
 import { progressManager } from '../game/ProgressManager';
 import { type Level, type LessonWord } from '../data/lessons';
 
-export class GameScene extends Phaser.Scene {
+type PracticeData = {
+  level: Level;
+  missedWords: LessonWord[];
+};
+
+export class PracticeScene extends Phaser.Scene {
   private level!: Level;
+  private missedWords: LessonWord[] = [];
   private roundIndex = 0;
   private score = 0;
   private stars = 0;
   private timeout?: Phaser.Time.TimerEvent;
   private currentWord?: LessonWord;
   private audioManager = new AudioManager();
-  private missedWords: LessonWord[] = [];
-  private isReviewMode = false;
 
   private promptText?: Phaser.GameObjects.Text;
   private answerButtons: Phaser.GameObjects.Container[] = [];
@@ -22,36 +26,33 @@ export class GameScene extends Phaser.Scene {
   private roundCounter?: Phaser.GameObjects.Text;
 
   constructor() {
-    super('GameScene');
+    super('PracticeScene');
   }
 
-  create(data: { level: Level; reviewMode?: boolean }): void {
+  create(data: PracticeData): void {
     this.level = data.level;
-    this.isReviewMode = data.reviewMode ?? false;
-    this.cameras.main.setBackgroundColor('#102542');
+    this.missedWords = data.missedWords || [];
+    this.cameras.main.setBackgroundColor('#0f4c2f');
 
-    // Preload audio for this level
-    this.audioManager.preloadAudio(this.level.words);
-
-    const header = this.add.text(40, 30, `${this.level.name} Level`, {
+    const header = this.add.text(40, 30, '📝 Practice Mode', {
       fontFamily: 'Verdana',
       fontSize: '32px',
-      color: '#fef3c7',
+      color: '#86efac',
       fontStyle: 'bold',
     });
     header.setOrigin(0);
 
-    const levelHint = this.add.text(40, 70, `Theme: ${this.level.theme}`, {
+    const levelHint = this.add.text(40, 70, `Focusing on words you missed`, {
       fontFamily: 'Verdana',
       fontSize: '17px',
-      color: '#dbeafe',
+      color: '#a3e635',
     });
     levelHint.setOrigin(0);
 
-    this.roundCounter = this.add.text(this.scale.width - 40, 30, 'Round 0/5', {
+    this.roundCounter = this.add.text(this.scale.width - 40, 30, `Words: ${this.missedWords.length}`, {
       fontFamily: 'Verdana',
       fontSize: '16px',
-      color: '#bfdbfe',
+      color: '#a3e635',
     });
     this.roundCounter.setOrigin(1, 0);
 
@@ -98,51 +99,75 @@ export class GameScene extends Phaser.Scene {
   }
 
   private nextRound(): void {
-    if (this.roundIndex >= 5) {
-      this.finishLevel();
+    if (this.roundIndex >= this.missedWords.length) {
+      this.finishPractice();
       return;
     }
 
     this.roundIndex += 1;
-    this.roundCounter?.setText(`Round ${this.roundIndex}/5`);
+    this.roundCounter?.setText(`Word ${this.roundIndex}/${this.missedWords.length}`);
 
     this.answerButtons.forEach((button) => {
       button.destroy(true);
     });
     this.answerButtons = [];
 
-    if (this.roundIndex % 2 === 0) {
-      this.startDragRound();
-      return;
-    }
-
-    this.showQuizRound();
+    this.showPracticeRound();
   }
 
-  private showQuizRound(): void {
-    const round = buildRound(this.level);
-    const word = round.word;
+  private showPracticeRound(): void {
+    const word = this.missedWords[this.roundIndex - 1];
+    if (!word) {
+      this.finishPractice();
+      return;
+    }
 
     this.currentWord = word;
     this.audioManager.speak(word.char);
 
+    // Randomly choose question type
+    const promptType = Phaser.Math.RND.pick(['char', 'pinyin', 'meaning']) as 'char' | 'pinyin' | 'meaning';
+
+    const getOptions = (): string[] => {
+      const options = new Set<string>();
+      const getValue = (w: LessonWord): string => {
+        if (promptType === 'char') return w.char;
+        if (promptType === 'pinyin') return w.pinyin;
+        return w.meaning;
+      };
+
+      options.add(getValue(word));
+
+      while (options.size < 4) {
+        const candidate = Phaser.Math.RND.pick(this.level.words);
+        const value = getValue(candidate);
+        if (!options.has(value)) {
+          options.add(value);
+        }
+      }
+
+      return Phaser.Utils.Array.Shuffle(Array.from(options));
+    };
+
+    const options = getOptions();
+    const answer = promptType === 'char' ? word.char : promptType === 'pinyin' ? word.pinyin : word.meaning;
+
     this.promptText?.setText(
-      round.promptType === 'char'
-        ? `Tap the correct character for "${word.meaning}"`
-        : round.promptType === 'pinyin'
-          ? `Which pinyin matches ${word.char}?`
-          : `Choose the meaning of ${word.char}`
+      promptType === 'char'
+        ? `Choose the character for "${word.meaning}"`
+        : promptType === 'pinyin'
+          ? `Pick the pinyin for ${word.char}`
+          : `What does ${word.char} mean?`
     );
 
     const baseY = 330;
-    const options = round.options;
 
     options.forEach((option, index) => {
       const x = this.scale.width * 0.5 + (index % 2 === 0 ? -190 : 190);
       const y = baseY + Math.floor(index / 2) * 90;
 
-      const buttonPanel = this.add.rectangle(x, y, 260, 60, 0x2563eb);
-      buttonPanel.setStrokeStyle(4, 0xe0f2fe);
+      const buttonPanel = this.add.rectangle(x, y, 260, 60, 0x15803d);
+      buttonPanel.setStrokeStyle(4, 0x86efac);
       buttonPanel.setInteractive({ useHandCursor: true });
 
       const label = this.add.text(x, y, option, {
@@ -157,84 +182,40 @@ export class GameScene extends Phaser.Scene {
       container.setDepth(2);
 
       container.on('pointerdown', () => {
-        this.handleAnswer(option, round.answer, word);
-      });
-
-      buttonPanel.on('pointerdown', () => {
-        this.handleAnswer(option, round.answer, word);
-      });
-
-      label.on('pointerdown', () => {
-        this.handleAnswer(option, round.answer, word);
+        this.handlePracticeAnswer(option, answer, word);
       });
 
       this.answerButtons.push(container);
     });
   }
 
-  private startDragRound(): void {
-    const word = this.level.words[this.roundIndex % this.level.words.length];
-
-    this.currentWord = word;
-    this.promptText?.setText(`Drag the meaning for ${word.char}`);
-    this.roundSummary?.setText('Match the word to the right meaning!');
-
-    this.scene.launch('DragDropScene', {
-      word,
-      onComplete: (success: boolean) => {
-        if (success) {
-          this.score += 10;
-          this.stars += 1;
-          this.roundSummary?.setText(`Great job! ${word.char} = ${word.meaning}`);
-          this.roundSummary?.setStyle({ color: '#86efac' });
-        } else {
-          this.missedWords.push(word);
-          this.roundSummary?.setText('Nice try! Try the next one.');
-          this.roundSummary?.setStyle({ color: '#fbbf24' });
-        }
-
-        this.time.delayedCall(700, () => {
-          this.nextRound();
-        });
-      },
-    });
-  }
-
-  private handleAnswer(option: string, correctAnswer: string, word: LessonWord): void {
+  private handlePracticeAnswer(option: string, correctAnswer: string, word: LessonWord): void {
     const isCorrect = option === correctAnswer;
     progressManager.markWordResult(word.id, isCorrect);
 
     if (isCorrect) {
       this.score += 10;
       this.stars += 1;
-      this.roundSummary?.setText(`Great job! ${word.char} = ${word.meaning}`);
+      this.roundSummary?.setText(`Excellent! ${word.char} = ${word.meaning}`);
       this.roundSummary?.setStyle({ color: '#86efac' });
     } else {
-      this.missedWords.push(word);
-      this.roundSummary?.setText(`Nice try! The correct answer is ${correctAnswer}.`);
+      this.roundSummary?.setText(`Not quite. The answer is ${correctAnswer}.`);
       this.roundSummary?.setStyle({ color: '#fbbf24' });
     }
 
     this.answerButtons.forEach((button) => button.disableInteractive());
-    this.time.delayedCall(700, () => {
+    this.time.delayedCall(1000, () => {
       this.nextRound();
     });
   }
 
-  private finishLevel(): void {
-    const isCompleted = this.score >= 40;
-    gameSave.addStars(this.stars);
+  private finishPractice(): void {
+    gameSave.addStars(Math.floor(this.stars / 2)); // Half stars for practice mode
 
-    if (isCompleted) {
-      gameSave.setCompletedLevel(this.level.id);
-    }
-
-    this.scene.start('ResultScene', {
-      level: this.level,
-      stars: this.stars,
+    this.scene.start('PracticeResultScene', {
+      wordsReviewed: this.missedWords.length,
       score: this.score,
-      isCompleted,
-      missedWords: this.missedWords,
+      correctAnswers: this.stars,
     });
   }
 }

@@ -1,80 +1,26 @@
-export const levels = [
-  {
-    id: 1,
-    name: 'Numbers',
-    theme: 'one to ten',
-    description: 'Count your way through the world.',
-    difficulty: 1,
-    words: [
-      { id: 'one', char: '一', pinyin: 'yī', meaning: 'one', hint: 'The first number.', emoji: '1️⃣' },
-      { id: 'two', char: '二', pinyin: 'èr', meaning: 'two', hint: 'A pair of shoes.', emoji: '2️⃣' },
-      { id: 'three', char: '三', pinyin: 'sān', meaning: 'three', hint: 'Three little pigs.', emoji: '3️⃣' },
-      { id: 'four', char: '四', pinyin: 'sì', meaning: 'four', hint: 'A square has four corners.', emoji: '4️⃣' },
-      { id: 'five', char: '五', pinyin: 'wǔ', meaning: 'five', hint: 'A hand has five fingers.', emoji: '5️⃣' },
-      { id: 'six', char: '六', pinyin: 'liù', meaning: 'six', hint: 'A dice often shows six.', emoji: '6️⃣' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Colors',
-    theme: 'bright and bold',
-    description: 'Paint the world with color words.',
-    difficulty: 1,
-    words: [
-      { id: 'red', char: '红', pinyin: 'hóng', meaning: 'red', hint: 'A rose is red.', emoji: '🔴' },
-      { id: 'blue', char: '蓝', pinyin: 'lán', meaning: 'blue', hint: 'The sky is blue.', emoji: '🔵' },
-      { id: 'yellow', char: '黄', pinyin: 'huáng', meaning: 'yellow', hint: 'The sun is yellow.', emoji: '🟡' },
-      { id: 'green', char: '绿', pinyin: 'lǜ', meaning: 'green', hint: 'Leaves are green.', emoji: '🟢' },
-      { id: 'black', char: '黑', pinyin: 'hēi', meaning: 'black', hint: 'A chalkboard is black.', emoji: '⚫' },
-      { id: 'white', char: '白', pinyin: 'bái', meaning: 'white', hint: 'Snow is white.', emoji: '⚪' },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Animals',
-    theme: 'pet pals',
-    description: 'Meet the friendly animal friends.',
-    difficulty: 2,
-    words: [
-      { id: 'cat', char: '猫', pinyin: 'māo', meaning: 'cat', hint: 'It likes to purr.', emoji: '🐱' },
-      { id: 'dog', char: '狗', pinyin: 'gǒu', meaning: 'dog', hint: 'A loyal friend.', emoji: '🐶' },
-      { id: 'bird', char: '鸟', pinyin: 'niǎo', meaning: 'bird', hint: 'It can fly in the sky.', emoji: '🐦' },
-      { id: 'fish', char: '鱼', pinyin: 'yú', meaning: 'fish', hint: 'It swims in water.', emoji: '🐟' },
-      { id: 'lion', char: '狮', pinyin: 'shī', meaning: 'lion', hint: 'The king of the jungle.', emoji: '🦁' },
-      { id: 'tiger', char: '虎', pinyin: 'hǔ', meaning: 'tiger', hint: 'It has stripes.', emoji: '🐯' },
-    ],
-  },
-  {
-    id: 4,
-    name: 'Family',
-    theme: 'who is who?',
-    description: 'Learn the people we love most.',
-    difficulty: 2,
-    words: [
-      { id: 'mother', char: '妈', pinyin: 'mā', meaning: 'mother', hint: 'She cares for the family.', emoji: '👩' },
-      { id: 'father', char: '爸', pinyin: 'bà', meaning: 'father', hint: 'He helps and teaches.', emoji: '👨' },
-      { id: 'sister', char: '姐', pinyin: 'jiě', meaning: 'older sister', hint: 'She may help you study.', emoji: '👧' },
-      { id: 'brother', char: '弟', pinyin: 'dì', meaning: 'younger brother', hint: 'He may play games with you.', emoji: '👦' },
-      { id: 'grandmother', char: '奶', pinyin: 'nǎi', meaning: 'grandmother', hint: 'She is kind and wise.', emoji: '👵' },
-      { id: 'grandfather', char: '爷', pinyin: 'yé', meaning: 'grandfather', hint: 'He may tell stories.', emoji: '👴' },
-    ],
-  },
-  {
-    id: 5,
-    name: 'Greetings',
-    theme: 'hello and goodbye',
-    description: 'Say hello and make friends.',
-    difficulty: 3,
-    words: [
-      { id: 'hello', char: '你好', pinyin: 'nǐ hǎo', meaning: 'hello', hint: 'A friendly greeting.', emoji: '👋' },
-      { id: 'thank-you', char: '谢谢', pinyin: 'xiè xie', meaning: 'thank you', hint: 'You say it when someone helps you.', emoji: '🙏' },
-      { id: 'goodbye', char: '再见', pinyin: 'zài jiàn', meaning: 'goodbye', hint: 'Used when leaving.', emoji: '👋' },
-      { id: 'please', char: '请', pinyin: 'qǐng', meaning: 'please', hint: 'Used to be polite.', emoji: '✨' },
-      { id: 'friend', char: '朋友', pinyin: 'péng you', meaning: 'friend', hint: 'Someone you enjoy spending time with.', emoji: '🤝' },
-      { id: 'happy', char: '快乐', pinyin: 'kuài lè', meaning: 'happy', hint: 'A feeling of joy.', emoji: '😊' },
-    ],
-  },
-] as const;
+import Phaser from 'phaser';
 
-export type LessonWord = (typeof levels)[number]['words'][number];
-export type Level = (typeof levels)[number];
+import './styles.css';
+import { MenuScene } from './scenes/MenuScene';
+import { LevelSelectScene } from './scenes/LevelSelectScene';
+import { GameScene } from './scenes/GameScene';
+import { DragDropScene } from './scenes/DragDropScene';
+import { ResultScene } from './scenes/ResultScene';
+import { PracticeScene } from './scenes/PracticeScene';
+import { PracticeResultScene } from './scenes/PracticeResultScene';
+
+const config: Phaser.Types.Core.GameConfig = {
+  type: Phaser.AUTO,
+  width: 900,
+  height: 620,
+  parent: 'app',
+  backgroundColor: '#0f172a',
+  pixelArt: false,
+  scene: [MenuScene, LevelSelectScene, GameScene, DragDropScene, ResultScene, PracticeScene, PracticeResultScene],
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+};
+
+new Phaser.Game(config);

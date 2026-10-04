@@ -1,160 +1,107 @@
 import Phaser from 'phaser';
 
-import { levels, type Level, type LessonWord } from '../data/lessons';
-import { buildRound, gameSave } from '../game/GameState';
-import { progressManager } from '../game/ProgressManager';
+import { gameSave } from '../game/GameState';
+import { type Level, type LessonWord } from '../data/lessons';
 
-export class GameScene extends Phaser.Scene {
-  private level!: Level;
-  private roundIndex = 0;
-  private score = 0;
-  private stars = 0;
-  private wordsUsed = new Set<string>();
-  private timeout?: Phaser.Time.TimerEvent;
+type ResultData = {
+  level: Level;
+  stars: number;
+  score: number;
+  isCompleted: boolean;
+  missedWords?: LessonWord[];
+};
 
-  private promptText?: Phaser.GameObjects.Text;
-  private answerButtons: Phaser.GameObjects.Container[] = [];
-  private roundSummary?: Phaser.GameObjects.Text;
-
+export class ResultScene extends Phaser.Scene {
   constructor() {
-    super('GameScene');
+    super('ResultScene');
   }
 
-  create(data: { level: Level }): void {
-    this.level = data.level;
-    this.cameras.main.setBackgroundColor('#102542');
+  create(data: ResultData): void {
+    this.cameras.main.setBackgroundColor('#111827');
 
-    const header = this.add.text(40, 30, `${this.level.name} Level`, {
+    const title = this.add.text(this.scale.width * 0.5, 80, data.isCompleted ? 'Level Complete!' : 'Keep Practicing!', {
       fontFamily: 'Verdana',
-      fontSize: '32px',
+      fontSize: '48px',
       color: '#fef3c7',
       fontStyle: 'bold',
     });
+    title.setOrigin(0.5);
 
-    const levelHint = this.add.text(40, 70, `Theme: ${this.level.theme}`, {
+    const starsText = this.add.text(this.scale.width * 0.5, 160, `Stars earned: ${data.stars} / 5`, {
       fontFamily: 'Verdana',
-      fontSize: '17px',
-      color: '#dbeafe',
+      fontSize: '26px',
+      color: '#bfdbfe',
     });
+    starsText.setOrigin(0.5);
 
-    this.promptText = this.add.text(this.scale.width * 0.5, 170, '', {
-      fontFamily: 'Verdana',
-      fontSize: '28px',
-      color: '#f8fafc',
-      align: 'center',
-      wordWrap: { width: 720 },
-    });
-    this.promptText.setOrigin(0.5);
-
-    this.roundSummary = this.add.text(this.scale.width * 0.5, 260, '', {
-      fontFamily: 'Verdana',
-      fontSize: '18px',
-      color: '#d1fae5',
-    });
-    this.roundSummary.setOrigin(0.5);
-
-    const quitButton = this.add.rectangle(110, 560, 170, 55, 0xf59e0b);
-    quitButton.setInteractive({ useHandCursor: true });
-    quitButton.on('pointerdown', () => this.scene.start('LevelSelectScene'));
-
-    const quitText = this.add.text(110, 560, 'Back to levels', {
+    const scoreText = this.add.text(this.scale.width * 0.5, 210, `Score: ${data.score}/50`, {
       fontFamily: 'Verdana',
       fontSize: '20px',
-      color: '#111827',
+      color: '#a5f3fc',
+    });
+    scoreText.setOrigin(0.5);
+
+    const totalStarsText = this.add.text(this.scale.width * 0.5, 260, `Total stars: ${gameSave.getTotalStars()}`, {
+      fontFamily: 'Verdana',
+      fontSize: '20px',
+      color: '#fde68a',
+    });
+    totalStarsText.setOrigin(0.5);
+
+    if (data.missedWords && data.missedWords.length > 0) {
+      const missedText = this.add.text(this.scale.width * 0.5, 310, `Words to review: ${data.missedWords.length}`, {
+        fontFamily: 'Verdana',
+        fontSize: '18px',
+        color: '#fed7aa',
+      });
+      missedText.setOrigin(0.5);
+    }
+
+    const replayButton = this.add.rectangle(this.scale.width * 0.5 - 160, 400, 220, 70, 0x22c55e);
+    replayButton.setStrokeStyle(4, 0xe2e8f0);
+    replayButton.setInteractive({ useHandCursor: true });
+    replayButton.on('pointerdown', () => this.scene.start('GameScene', { level: data.level }));
+
+    const replayText = this.add.text(this.scale.width * 0.5 - 160, 400, 'Play again', {
+      fontFamily: 'Verdana',
+      fontSize: '24px',
+      color: '#052e16',
       fontStyle: 'bold',
     });
-    quitText.setOrigin(0.5);
+    replayText.setOrigin(0.5);
 
-    this.nextRound();
-  }
+    // Keep Practicing button - shows if there are missed words
+    if (data.missedWords && data.missedWords.length > 0) {
+      const practiceButton = this.add.rectangle(this.scale.width * 0.5 + 160, 400, 220, 70, 0xf59e0b);
+      practiceButton.setStrokeStyle(4, 0xe2e8f0);
+      practiceButton.setInteractive({ useHandCursor: true });
+      practiceButton.on('pointerdown', () => {
+        this.scene.start('PracticeScene', {
+          level: data.level,
+          missedWords: data.missedWords,
+        });
+      });
 
-  private nextRound(): void {
-    const totalRounds = 5;
-    if (this.roundIndex >= totalRounds) {
-      this.finishLevel();
-      return;
-    }
-
-    this.roundIndex += 1;
-    this.answerButtons.forEach((button) => button.destroy(true));
-    this.answerButtons = [];
-
-    const round = buildRound(this.level);
-    const word = round.word;
-
-    this.wordsUsed.add(word.id);
-    this.promptText?.setText(round.promptType === 'char' ? `Tap the correct character for “${word.meaning}”` : round.promptType === 'pinyin' ? `Which pinyin matches ${word.char}?` : `Choose the meaning of ${word.char}`);
-
-    const baseY = 330;
-    const options = round.options;
-
-    options.forEach((option, index) => {
-      const x = this.scale.width * 0.5 + (index % 2 === 0 ? -190 : 190);
-      const y = baseY + Math.floor(index / 2) * 90;
-
-      const buttonPanel = this.add.rectangle(x, y, 260, 60, 0x2563eb);
-      buttonPanel.setStrokeStyle(4, 0xe0f2fe);
-      buttonPanel.setInteractive({ useHandCursor: true });
-
-      const label = this.add.text(x, y, option, {
+      const practiceText = this.add.text(this.scale.width * 0.5 + 160, 400, 'Keep Practicing', {
         fontFamily: 'Verdana',
-        fontSize: '24px',
-        color: '#f8fafc',
+        fontSize: '20px',
+        color: '#111827',
+        fontStyle: 'bold',
       });
-      label.setOrigin(0.5);
-
-      const container = this.add.container(0, 0, [buttonPanel, label]);
-      container.setPosition(x, y);
-      container.setDepth(2);
-      container.setSize(260, 60);
-
-      container.on('pointerdown', () => {
-        this.handleAnswer(option, round.answer, word);
-      });
-
-      buttonPanel.on('pointerdown', () => {
-        this.handleAnswer(option, round.answer, word);
-      });
-      label.on('pointerdown', () => {
-        this.handleAnswer(option, round.answer, word);
-      });
-
-      this.answerButtons.push(container);
-    });
-  }
-
-  private handleAnswer(option: string, correctAnswer: string, word: LessonWord): void {
-    const isCorrect = option === correctAnswer;
-    progressManager.markWordResult(word.id, isCorrect);
-
-    if (isCorrect) {
-      this.score += 10;
-      this.stars += 1;
-      this.roundSummary?.setText(`Great job! ${word.char} = ${word.meaning}`);
-      this.roundSummary?.setStyle({ color: '#86efac' });
-    } else {
-      this.roundSummary?.setText(`Nice try! The correct answer is ${correctAnswer}.`);
-      this.roundSummary?.setStyle({ color: '#fbbf24' });
+      practiceText.setOrigin(0.5);
     }
 
-    this.answerButtons.forEach((button) => button.disableInteractive());
-    this.timeout = this.time.delayedCall(700, () => {
-      this.nextRound();
-    });
-  }
+    const levelSelectButton = this.add.rectangle(this.scale.width * 0.5, 500, 220, 70, 0x38bdf8);
+    levelSelectButton.setStrokeStyle(4, 0xe2e8f0);
+    levelSelectButton.setInteractive({ useHandCursor: true });
+    levelSelectButton.on('pointerdown', () => this.scene.start('LevelSelectScene'));
 
-  private finishLevel(): void {
-    const isCompleted = this.score >= 40;
-    gameSave.addStars(this.stars);
-    if (isCompleted) {
-      gameSave.setCompletedLevel(this.level.id);
-    }
-
-    this.scene.start('ResultScene', {
-      level: this.level,
-      stars: this.stars,
-      score: this.score,
-      isCompleted,
+    const levelSelectText = this.add.text(this.scale.width * 0.5, 500, 'Levels', {
+      fontFamily: 'Verdana',
+      fontSize: '24px',
+      color: '#0f172a',
+      fontStyle: 'bold',
     });
+    levelSelectText.setOrigin(0.5);
   }
 }
