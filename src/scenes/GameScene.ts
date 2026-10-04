@@ -9,7 +9,6 @@ export class GameScene extends Phaser.Scene {
   private roundIndex = 0;
   private score = 0;
   private stars = 0;
-  private wordsUsed = new Set<string>();
   private timeout?: Phaser.Time.TimerEvent;
 
   private promptText?: Phaser.GameObjects.Text;
@@ -82,7 +81,6 @@ export class GameScene extends Phaser.Scene {
     const round = buildRound(this.level);
     const word = round.word;
 
-    this.wordsUsed.add(word.id);
     this.promptText?.setText(
       round.promptType === 'char'
         ? `Tap the correct character for "${word.meaning}"`
