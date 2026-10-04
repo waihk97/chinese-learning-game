@@ -1,0 +1,41 @@
+# Little Hanzi Quest
+
+A kid-friendly Chinese learning game built with Phaser, Vite, and TypeScript.
+
+## Features
+
+- Level-based gameplay with themed lessons
+- Mini-game style taps and selects
+- Spaced repetition tracking for vocabulary review
+- Save progress in the browser using localStorage
+- No external art assets required; everything is drawn in code
+
+## Getting started
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+3. Open the local URL shown in the terminal.
+
+## Game flow
+
+- Home screen
+- Level selection screen
+- Game rounds with multiple-choice questions
+- Results screen with stars and progression
+
+## Suggested next improvements
+
+- Add sound effects and native pronunciation audio
+- Add drag-and-drop word matching
+- Add more levels and animations
+- Add a real lesson editor and content management
+
+## License
+
+MIT
