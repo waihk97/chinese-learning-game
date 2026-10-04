@@ -1,135 +1,51 @@
 import Phaser from 'phaser';
 
-import { levels, type Level, type LessonWord } from '../data/lessons';
-import { progressManager } from './ProgressManager';
-
-export type SaveData = {
-  completedLevels: number[];
-  lastLevelId: number | null;
-  totalStars: number;
-};
-
-const SAVE_KEY = 'little-hanzi-quest-save';
-
-export class GameSave {
-  private data: SaveData = {
-    completedLevels: [],
-    lastLevelId: null,
-    totalStars: 0,
-  };
-
-  public constructor() {
-    this.load();
+export class MenuScene extends Phaser.Scene {
+  constructor() {
+    super('MenuScene');
   }
 
-  private load(): void {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) {
-      return;
-    }
+  create(): void {
+    this.cameras.main.setBackgroundColor('#111827');
 
-    try {
-      this.data = { ...this.data, ...JSON.parse(raw) } as SaveData;
-    } catch {
-      this.data = {
-        completedLevels: [],
-        lastLevelId: null,
-        totalStars: 0,
-      };
-    }
+    const title = this.add.text(this.scale.width * 0.5, 120, 'Little Hanzi Quest', {
+      fontFamily: 'Verdana',
+      fontSize: '52px',
+      color: '#fef3c7',
+      fontStyle: 'bold',
+    });
+    title.setOrigin(0.5);
+
+    const subtitle = this.add.text(this.scale.width * 0.5, 180, 'Learn Chinese one level at a time!', {
+      fontFamily: 'Verdana',
+      fontSize: '22px',
+      color: '#bfdbfe',
+    });
+    subtitle.setOrigin(0.5);
+
+    const startButton = this.add.rectangle(this.scale.width * 0.5, 330, 260, 74, 0x38bdf8);
+    startButton.setStrokeStyle(4, 0xe0f2fe);
+    startButton.setInteractive({ useHandCursor: true });
+
+    const startText = this.add.text(this.scale.width * 0.5, 330, 'Start Learning', {
+      fontFamily: 'Verdana',
+      fontSize: '28px',
+      color: '#0f172a',
+      fontStyle: 'bold',
+    });
+    startText.setOrigin(0.5);
+
+    startButton.on('pointerdown', () => {
+      this.scene.start('LevelSelectScene');
+    });
+
+    const infoText = this.add.text(this.scale.width * 0.5, 470, 'Tap to learn characters, pinyin, and meanings with mini-games.', {
+      fontFamily: 'Verdana',
+      fontSize: '18px',
+      color: '#d1fae5',
+      align: 'center',
+      wordWrap: { width: 650 },
+    });
+    infoText.setOrigin(0.5);
   }
-
-  private save(): void {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(this.data));
-  }
-
-  public getCompletedLevels(): number[] {
-    return this.data.completedLevels;
-  }
-
-  public getLastLevelId(): number | null {
-    return this.data.lastLevelId;
-  }
-
-  public setCompletedLevel(levelId: number): void {
-    if (!this.data.completedLevels.includes(levelId)) {
-      this.data.completedLevels.push(levelId);
-    }
-    this.data.lastLevelId = levelId;
-    this.save();
-  }
-
-  public addStars(amount: number): void {
-    this.data.totalStars += amount;
-    this.save();
-  }
-
-  public getTotalStars(): number {
-    return this.data.totalStars;
-  }
-
-  public getLevelProgress(levelId: number): number {
-    return this.data.completedLevels.includes(levelId) ? 100 : 0;
-  }
-}
-
-export const gameSave = new GameSave();
-
-export function getLevelPool(level: Level): LessonWord[] {
-  const dueOrdered = progressManager.getDueWords(level.words).slice() as LessonWord[];
-  if (dueOrdered.length === 0) {
-    return level.words;
-  }
-  return dueOrdered;
-}
-
-export function buildRound(level: Level): { word: LessonWord; options: string[]; promptType: 'meaning' | 'char' | 'pinyin'; answer: string } {
-  const wordPool = getLevelPool(level);
-  const word = Phaser.Math.RND.pick(wordPool) ?? level.words[0];
-  const promptType = Phaser.Math.RND.pick(['meaning', 'char', 'pinyin']);
-
-  let prompt = '';
-  let answer = '';
-
-  if (promptType === 'meaning') {
-    prompt = `Choose the meaning of ${word.char}`;
-    answer = word.meaning;
-  } else if (promptType === 'char') {
-    prompt = `Which character means “${word.meaning}”?`;
-    answer = word.char;
-  } else {
-    prompt = `What is the pinyin for ${word.char}?`;
-    answer = word.pinyin;
-  }
-
-  const options = [answer];
-  while (options.length < 4) {
-    const candidate = Phaser.Math.RND.pick(level.words.filter((entry) => !options.includes(entry.meaning === answer ? entry.meaning : entry[ promptType === 'char' ? 'char' : promptType === 'pinyin' ? 'pinyin' : 'meaning' ])));
-    if (!candidate) {
-      break;
-    }
-    const value = promptType === 'char' ? candidate.char : promptType === 'pinyin' ? candidate.pinyin : candidate.meaning;
-    if (!options.includes(value)) {
-      options.push(value);
-    }
-  }
-
-  while (options.length < 4) {
-    const fallback = Phaser.Math.RND.pick(level.words);
-    const value = promptType === 'char' ? fallback.char : promptType === 'pinyin' ? fallback.pinyin : fallback.meaning;
-    if (!options.includes(value)) {
-      options.push(value);
-    }
-  }
-
-  return {
-    word,
-    options: Phaser.Utils.Array.Shuffle(options),
-    promptType,
-    answer,
-  };
-}
-
-export function getLevelById(levelId: number): Level | undefined {
-  return levels.find((level) => level.id === levelId);
 }
